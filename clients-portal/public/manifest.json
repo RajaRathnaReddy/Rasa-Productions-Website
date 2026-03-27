@@ -1,0 +1,17 @@
+{
+  "name": "Rasa Productions Studio Portal",
+  "short_name": "Rasa Productions",
+  "description": "Private studio collaboration portal for Rasa Productions music clients.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080812",
+  "theme_color": "#080812",
+  "icons": [
+    {
+      "src": "/media/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
