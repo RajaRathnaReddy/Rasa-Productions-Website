@@ -40,6 +40,8 @@ export default function CreateProjectPage() {
     const project_title = fd.get("project_title") as string;
     const song_title = fd.get("song_title") as string;
     const genre = fd.get("genre") as string;
+    const bpm = fd.get("bpm") as string;
+    const key = fd.get("key") as string;
     const notes = fd.get("notes") as string;
 
     let cover_url: string | null = null;
@@ -66,7 +68,7 @@ export default function CreateProjectPage() {
 
     const { data, error: insertError } = await supabase
       .from("projects")
-      .insert([{ client_id, client_name, project_title, song_title, genre, notes, status: "Draft", cover_url }])
+      .insert([{ client_id, client_name, project_title, song_title, genre, bpm, key, notes, status: "Draft", cover_url }])
       .select()
       .single();
 
@@ -204,15 +206,37 @@ export default function CreateProjectPage() {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-              <Tag className="w-3.5 h-3.5 text-fuchsia-400" /> Genre / Style
-            </label>
-            <input
-              name="genre"
-              placeholder="e.g. Gospel, Hip-Hop, R&B…"
-              className="w-full px-3 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
-            />
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/80 flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5 text-fuchsia-400" /> Genre / Style
+              </label>
+              <input
+                name="genre"
+                placeholder="e.g. Gospel, Hip-Hop, R&B…"
+                className="w-full px-3 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/80 flex items-center gap-2">
+                BPM
+              </label>
+              <input
+                name="bpm"
+                placeholder="e.g. 120"
+                className="w-full px-3 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white/80 flex items-center gap-2">
+                Key
+              </label>
+              <input
+                name="key"
+                placeholder="e.g. C Min"
+                className="w-full px-3 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20"
+              />
+            </div>
           </div>
         </div>
 

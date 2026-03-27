@@ -10,6 +10,7 @@ import {
   Edit3, Save, X, ImagePlus, Music, Tag, FileText, CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
+import { analyzeAudio } from "@/utils/audio-analyzer";
 
 const STATUS_CONFIG: Record<string, { color: string; dot: string }> = {
   "Draft":                     { color: "text-zinc-400",   dot: "bg-zinc-500" },
@@ -54,6 +55,8 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     project_title: project.project_title,
     song_title: project.song_title,
     genre: project.genre || "",
+    bpm: project.bpm || "",
+    key: project.key || "",
     notes: project.notes || "",
   });
   const [isSavingMeta, setIsSavingMeta] = useState(false);
@@ -118,6 +121,17 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     let audioUrl = null;
 
     if (file && file.size > 0) {
+      setUploadProgress("Analyzing BPM & Key…");
+      try {
+        const { bpm, key } = await analyzeAudio(file);
+        
+        // Save the analyzed metadata back to the project automatically
+        setEditData(d => ({ ...d, bpm, key }));
+        await supabase.from("projects").update({ bpm, key }).eq("id", project.id);
+      } catch (err) {
+        console.error("Audio analysis failed:", err);
+      }
+
       setUploadProgress("Uploading audio…");
       const fileExt = file.name.split(".").pop();
       const fileName = `${project.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -243,6 +257,20 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
                         placeholder="Genre / style"
                       />
                     </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <input
+                        value={editData.bpm}
+                        onChange={e => setEditData(d => ({ ...d, bpm: e.target.value }))}
+                        className="px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/40"
+                        placeholder="BPM (e.g. 120)"
+                      />
+                      <input
+                        value={editData.key}
+                        onChange={e => setEditData(d => ({ ...d, key: e.target.value }))}
+                        className="px-3 py-2 rounded-lg bg-black/30 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/40"
+                        placeholder="Key (e.g. C Min)"
+                      />
+                    </div>
                     <textarea
                       value={editData.notes}
                       onChange={e => setEditData(d => ({ ...d, notes: e.target.value }))}
@@ -261,6 +289,12 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
                         <span className="flex items-center gap-1 text-xs">
                           <Tag className="w-3 h-3 text-indigo-400" />
                           {editData.genre}
+                        </span>
+                      )}
+                      {(editData.bpm || editData.key) && (
+                        <span className="flex items-center gap-2 text-xs opacity-70 border-l border-white/10 pl-2 ml-1">
+                          {editData.bpm && <span>{editData.bpm}</span>}
+                          {editData.key && <span>• {editData.key}</span>}
                         </span>
                       )}
                     </p>

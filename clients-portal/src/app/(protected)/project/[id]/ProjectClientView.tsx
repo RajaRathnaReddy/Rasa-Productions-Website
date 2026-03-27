@@ -80,7 +80,11 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
             <p className="text-sm text-white/35 font-medium mt-0.5 truncate">{project.project_title}</p>
           </div>
           <div className="hidden md:flex gap-5 shrink-0 pr-4">
-            {[["Tempo", "120 BPM"], ["Key", "C Min"], ["Engineer", "Rasa Prod."]].map(([label, value], i) => (
+            {[
+              ["Tempo", project.bpm || "--"], 
+              ["Key", project.key || "--"], 
+              ["Engineer", "Rasa Prod."]
+            ].map(([label, value], i) => (
               <div key={i} className="flex flex-col items-end">
                 <span className="text-[9px] font-bold text-white/25 uppercase tracking-widest">{label}</span>
                 <span className={`text-base font-black ${i === 2 ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400" : "text-white"}`}>{value}</span>
