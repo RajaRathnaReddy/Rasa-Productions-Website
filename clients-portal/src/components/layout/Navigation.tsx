@@ -44,7 +44,7 @@ export function Navigation({ userRole, isAdmin, userEmail, displayName = "User" 
     router.push("/login");
   };
 
-  const logoHref = (userRole === "super_admin" || isAdmin) ? "/admin/projects" : userRole === "client" ? "/dashboard" : "/";
+  const logoHref = (userRole === "super_admin" || isAdmin) ? "/admin" : userRole === "client" ? "/dashboard" : "/";
   const initials = getInitials(displayName || userEmail || "U");
   const gradient = getAvatarGradient(userEmail || displayName || "user");
 
