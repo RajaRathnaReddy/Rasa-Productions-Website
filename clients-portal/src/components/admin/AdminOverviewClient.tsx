@@ -58,7 +58,7 @@ export function AdminOverviewClient({ projects, events, counts }: Props) {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [inviteResult, setInviteResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [inviteResult, setInviteResult] = useState<{ success: boolean; alreadyRegistered: boolean; message: string } | null>(null);
 
   // Projects needing action
   const actionRequired = projects.filter(p => 
@@ -75,7 +75,6 @@ export function AdminOverviewClient({ projects, events, counts }: Props) {
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviteLoading(true);
-    // Call the server action endpoint
     const res = await fetch("/api/invite-client", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -83,13 +82,21 @@ export function AdminOverviewClient({ projects, events, counts }: Props) {
     });
     const data = await res.json();
     if (res.ok) {
-      setInviteResult({ success: true, message: `Invite sent to ${inviteEmail}!` });
+      if (data.alreadyRegistered) {
+        setInviteResult({
+          success: true,
+          alreadyRegistered: true,
+          message: `${inviteEmail} is already registered — a password reset link has been sent to them instead.`,
+        });
+      } else {
+        setInviteResult({ success: true, alreadyRegistered: false, message: `Invite sent to ${inviteEmail}!` });
+      }
       setInviteEmail("");
     } else {
-      setInviteResult({ success: false, message: data.error || "Failed to send invite." });
+      setInviteResult({ success: false, alreadyRegistered: false, message: data.error || "Failed to send invite." });
     }
     setInviteLoading(false);
-    setTimeout(() => setInviteResult(null), 4000);
+    setTimeout(() => setInviteResult(null), 6000);
   };
 
   return (
@@ -156,7 +163,13 @@ export function AdminOverviewClient({ projects, events, counts }: Props) {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${inviteResult.success ? "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300" : "bg-rose-500/10 border border-rose-500/25 text-rose-300"}`}
+                      className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
+                        !inviteResult.success
+                          ? "bg-rose-500/10 border border-rose-500/25 text-rose-300"
+                          : inviteResult.alreadyRegistered
+                          ? "bg-amber-500/10 border border-amber-500/25 text-amber-300"
+                          : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300"
+                      }`}
                     >
                       {inviteResult.message}
                     </motion.div>
