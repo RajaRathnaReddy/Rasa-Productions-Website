@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   );
 
   const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${new URL(request.url).origin}/auth/callback?next=/update-password`,
+    redirectTo: `${new URL(request.url).origin}/auth/confirm`,
   });
 
   if (error) {

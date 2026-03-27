@@ -43,9 +43,12 @@ export function UpdatePasswordForm() {
     } else {
       setSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
-        router.refresh();
-      }, 2000);
+        // Sign out so the client logs in fresh with their new password
+        supabase.auth.signOut().finally(() => {
+          router.push("/login");
+          router.refresh();
+        });
+      }, 2200);
     }
   };
 
@@ -55,8 +58,8 @@ export function UpdatePasswordForm() {
         <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-b from-white/20 via-emerald-500/30 to-teal-500/20 z-0" />
         <div className="relative z-10 bg-[#0d0d1e]/92 backdrop-blur-3xl rounded-2xl overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.6)] px-8 py-10 space-y-4">
           <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto" />
-          <h2 className="text-xl font-black text-white">Password Updated!</h2>
-          <p className="text-sm text-white/50">Your new password is set. Taking you to the dashboard...</p>
+          <h2 className="text-xl font-black text-white">Password Set Successfully!</h2>
+          <p className="text-sm text-white/50">Your password has been saved. Redirecting you to the login page to sign in with your new password…</p>
         </div>
       </div>
     );
