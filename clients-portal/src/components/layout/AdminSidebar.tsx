@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, Users, ChevronRight, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Users, ChevronRight, ShieldCheck, Settings2 } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard, exact: true },
   { label: "Projects", href: "/admin/projects", icon: FolderOpen, exact: false },
   { label: "Clients", href: "/admin/clients", icon: Users, exact: false },
+  { label: "Settings", href: "/admin/settings", icon: Settings2, exact: false },
 ];
 
 export default function AdminSidebar() {

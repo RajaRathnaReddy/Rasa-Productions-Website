@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AnimatePresence, motion } from "framer-motion";
 import { 
   Loader2, ArrowLeft, UploadCloud, FileAudio, Trash2, 
-  Edit3, Save, X, ImagePlus, Music, Tag, FileText, CheckCircle2
+  Edit3, Save, X, ImagePlus, Music, Tag, FileText, CheckCircle2, Lock, LockOpen
 } from "lucide-react";
 import Link from "next/link";
 import { analyzeAudio } from "@/utils/audio-analyzer";
@@ -48,10 +48,26 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
   const [editingEventText, setEditingEventText] = useState("");
   const [savingEditId, setSavingEditId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [lyricsLocked, setLyricsLocked] = useState<boolean>(project.lyrics_locked ?? false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
 
   const showToast = (msg: string, ok = false) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  /* ── LYRICS LOCK TOGGLE ── */
+  const handleToggleLyricsLock = async () => {
+    setIsTogglingLock(true);
+    const newVal = !lyricsLocked;
+    const { error } = await supabase.from("projects").update({ lyrics_locked: newVal }).eq("id", project.id);
+    if (!error) {
+      setLyricsLocked(newVal);
+      showToast(newVal ? "🔒 Lyrics locked" : "🔓 Lyrics unlocked — client can resubmit", true);
+    } else {
+      showToast("Failed to update lock: " + error.message);
+    }
+    setIsTogglingLock(false);
   };
 
   /* ── EMAIL NOTIFICATION HELPER ── */
@@ -422,7 +438,24 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
                 )}
               </div>
 
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 flex-wrap">
+                {/* Lyrics Lock Toggle */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleToggleLyricsLock}
+                  disabled={isTogglingLock}
+                  className={`h-8 px-3 text-xs gap-1.5 border transition-all ${
+                    lyricsLocked
+                      ? "border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                      : "border-emerald-500/30 bg-emerald-500/8 text-emerald-400 hover:bg-emerald-500/15"
+                  }`}
+                  title={lyricsLocked ? "Click to unlock — allows client to resubmit" : "Click to lock lyrics"}
+                >
+                  {isTogglingLock ? <Loader2 className="w-3 h-3 animate-spin" /> : lyricsLocked ? <Lock className="w-3 h-3" /> : <LockOpen className="w-3 h-3" />}
+                  Lyrics {lyricsLocked ? "Locked" : "Unlocked"}
+                </Button>
+
                 {isEditing ? (
                   <>
                     <Button

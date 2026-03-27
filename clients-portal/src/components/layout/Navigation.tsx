@@ -72,14 +72,22 @@ export function Navigation({ userRole, isAdmin, userEmail, displayName = "User" 
         {(userRole || isAdmin) && (
           <div className="flex flex-1 items-center justify-end gap-1.5">
             <nav className="flex items-center gap-1">
-              {/* Admin Panel link */}
+              {/* Admin Panel + Client Portal links */}
               {(userRole === "super_admin" || isAdmin) && (
-                <Link
-                  href="/admin"
-                  className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 rounded-full hover:bg-white/6 transition-all border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)] mx-1"
-                >
-                  Admin Panel
-                </Link>
+                <>
+                  <Link
+                    href="/admin"
+                    className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 rounded-full hover:bg-white/6 transition-all border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)] mx-1"
+                  >
+                    Admin Panel
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-fuchsia-400 px-4 py-2 rounded-full hover:bg-white/6 transition-all border border-indigo-500/20 shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] mx-1"
+                  >
+                    Client Portal
+                  </Link>
+                </>
               )}
               
               {userRole === "client" && (
