@@ -1,0 +1,46 @@
+import { cache } from "react";
+import { createClient } from "@/utils/supabase/server";
+
+/**
+ * Cached Supabase project fetcher — deduplicates identical requests
+ * within a single React render tree (per request).
+ */
+export const getCachedProjects = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("projects")
+    .select("id, project_title, song_title, client_name, client_id, status, cover_url, created_at, bpm, key, notes, client_email")
+    .order("created_at", { ascending: false });
+  return data ?? [];
+});
+
+export const getCachedProject = cache(async (id: string) => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return data;
+});
+
+export const getCachedEvents = cache(async (projectId: string) => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  return data ?? [];
+});
+
+export const getCachedRecentEvents = cache(async () => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("events")
+    .select("*, projects(project_title, client_name)")
+    .order("created_at", { ascending: false })
+    .limit(12);
+  return data ?? [];
+});

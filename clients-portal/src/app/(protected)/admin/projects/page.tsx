@@ -1,15 +1,10 @@
-import { createClient } from "@/utils/supabase/server";
+import { getCachedProjects } from "@/lib/data-cache";
 import ProjectsListClient from "./ProjectsListClient";
 
-export const revalidate = 0;
+// Revalidate every 30s — avoids full server fetch on every click
+export const revalidate = 30;
 
 export default async function AdminProjectsPage() {
-  const supabase = await createClient();
-  
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  return <ProjectsListClient projects={projects || []} />;
+  const projects = await getCachedProjects();
+  return <ProjectsListClient projects={projects} />;
 }

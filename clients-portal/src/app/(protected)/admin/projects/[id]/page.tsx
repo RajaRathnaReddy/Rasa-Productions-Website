@@ -1,30 +1,20 @@
-import { createClient } from "@/utils/supabase/server";
+import { getCachedProject, getCachedEvents } from "@/lib/data-cache";
 import { notFound } from "next/navigation";
 import { AdminProjectManager } from "./AdminProjectManager";
 
-export const revalidate = 0;
+// Cache for 20 seconds — fast enough for live updates, no full refetch every click
+export const revalidate = 20;
 
 export default async function AdminProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  // Fetch Project
-  const { data: project, error: projError } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", id)
-    .single();
+  // Parallel fetch using cached helpers — deduplication guaranteed by React cache()
+  const [project, events] = await Promise.all([
+    getCachedProject(id),
+    getCachedEvents(id),
+  ]);
 
-  if (projError || !project) {
-    return notFound();
-  }
+  if (!project) return notFound();
 
-  // Fetch Events for this project
-  const { data: events, error: evError } = await supabase
-    .from("events")
-    .select("*")
-    .eq("project_id", id)
-    .order("created_at", { ascending: false });
-
-  return <AdminProjectManager project={project} initialEvents={events || []} />;
+  return <AdminProjectManager project={project} initialEvents={events} />;
 }
