@@ -28,16 +28,33 @@ const EVENT_TYPE_ICONS: Record<string, string> = {
   "Update": "📌",
 };
 
-type Props = {
-  projects: any[];
-  events: any[];
-  statCards: any[];
+type Counts = {
   totalProjects: number;
+  uniqueClients: number;
+  inReview: number;
+  awaitingFeedback: number;
+  approved: number;
   delivered: number;
 };
 
-export function AdminOverviewClient({ projects, events, statCards, totalProjects, delivered }: Props) {
+type Props = {
+  projects: any[];
+  events: any[];
+  counts: Counts;
+};
+
+export function AdminOverviewClient({ projects, events, counts }: Props) {
   const supabase = createClient();
+  const { totalProjects, uniqueClients, inReview, awaitingFeedback, approved, delivered } = counts;
+
+  const statCards = [
+    { label: "Total Projects",    value: totalProjects,    icon: FolderOpen,    color: "from-indigo-500/20 to-indigo-600/10",   border: "border-indigo-500/30",   iconColor: "text-indigo-400",   href: "/admin/projects" },
+    { label: "Active Clients",    value: uniqueClients,    icon: Users,         color: "from-fuchsia-500/20 to-fuchsia-600/10", border: "border-fuchsia-500/30", iconColor: "text-fuchsia-400", href: "/admin/clients" },
+    { label: "In Review",         value: inReview,         icon: Clock,         color: "from-amber-500/20 to-amber-600/10",    border: "border-amber-500/30",   iconColor: "text-amber-400",   href: "/admin/projects" },
+    { label: "Awaiting Feedback", value: awaitingFeedback, icon: MessageSquare, color: "from-sky-500/20 to-sky-600/10",        border: "border-sky-500/30",     iconColor: "text-sky-400",     href: "/admin/projects" },
+    { label: "Approved",          value: approved,         icon: TrendingUp,    color: "from-emerald-500/20 to-emerald-600/10",border: "border-emerald-500/30", iconColor: "text-emerald-400", href: "/admin/projects" },
+    { label: "Final Delivered",   value: delivered,        icon: CheckCircle2,  color: "from-violet-500/20 to-violet-600/10", border: "border-violet-500/30", iconColor: "text-violet-400",  href: "/admin/projects" },
+  ];
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
