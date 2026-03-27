@@ -56,7 +56,7 @@ export default function CreateProjectPage() {
       uploadData.append("path", path);
 
       try {
-        const uploadRes = await fetch(process.env.NEXT_PUBLIC_UPLOAD_API_URL || "https://rajarathnareddy.com/upload.php", {
+        const uploadRes = await fetch(process.env.NEXT_PUBLIC_UPLOAD_API_URL || "https://storage.rasaproductions.in/upload.php", {
           method: "POST",
           headers: {
             "X-API-KEY": process.env.NEXT_PUBLIC_UPLOAD_API_KEY || "RASA_STUDIO_UPLOAD_2026_xYz987"
