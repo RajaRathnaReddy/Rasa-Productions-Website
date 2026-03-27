@@ -34,15 +34,19 @@ export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "
         {(userRole || isAdmin) && (
           <div className="flex flex-1 items-center justify-end gap-1.5">
             <nav className="flex items-center gap-1">
-              {/* Admin nav links intentionally hidden — use the sidebar for admin navigation */}
+              {/* Link to Admin Panel - Visible only to admins */}
+              {(userRole === "super_admin" || isAdmin) && (
+                <Link
+                  href="/admin"
+                  className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 rounded-full hover:bg-white/6 transition-all border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)] mx-1"
+                >
+                  Admin Panel
+                </Link>
+              )}
+              
               {userRole === "client" && (
                 <>
                   <Link href="/dashboard" className="text-sm font-semibold text-white/55 hover:text-white px-4 py-2 rounded-full hover:bg-white/6 transition-all hidden sm:block">My Mixes</Link>
-                  {isAdmin && (
-                    <Link href="/admin/projects" className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 rounded-full hover:bg-white/6 transition-all border border-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.1)] hover:shadow-[0_0_20px_rgba(52,211,153,0.2)] ml-1 mr-1">
-                      Admin Panel
-                    </Link>
-                  )}
                   <Link
                     href="/submit-lyrics"
                     className="text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 px-5 py-2 rounded-full shadow-[0_0_18px_rgba(99,102,241,0.4)] hover:shadow-[0_0_28px_rgba(99,102,241,0.65)] transition-all flex items-center gap-2 ml-1"
