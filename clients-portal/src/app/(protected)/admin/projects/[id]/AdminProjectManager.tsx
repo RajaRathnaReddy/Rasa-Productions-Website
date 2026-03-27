@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AnimatePresence, motion } from "framer-motion";
 import { 
   Loader2, ArrowLeft, UploadCloud, FileAudio, Trash2, 
   Edit3, Save, X, ImagePlus, Music, Tag, FileText, CheckCircle2
@@ -43,6 +44,12 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
   const [isAddingEvent, setIsAddingEvent] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const showToast = (msg: string, ok = false) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   // Cover image state
   const [coverUrl, setCoverUrl] = useState<string | null>(project.cover_url || null);
@@ -101,7 +108,7 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
       const resJson = await res.json();
       publicUrl = resJson.url;
     } catch (err: any) {
-      alert("Cover upload failed: " + err.message);
+      showToast("Cover upload failed: " + err.message);
       setIsUploadingCover(false);
       return;
     }
@@ -156,7 +163,7 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
         const json = await uploadRes.json();
         audioUrl = json.url;
       } catch (uploadError: any) {
-        alert("Audio upload failed: " + uploadError.message);
+        showToast("Audio upload failed: " + uploadError.message);
         setIsAddingEvent(false);
         setUploadProgress("");
         return;
@@ -171,7 +178,7 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
       .single();
 
     if (insertError) {
-      alert("Failed to create event: " + insertError.message);
+      showToast("Failed to create event: " + insertError.message);
     } else if (newEvent) {
       setEvents([newEvent, ...events]);
       (e.target as HTMLFormElement).reset();
@@ -190,7 +197,7 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     if (!error) {
       setEvents(events.filter(ev => ev.id !== eventId));
     } else {
-      alert("Failed to delete event: " + error.message);
+      showToast("Failed to delete event: " + error.message);
     }
     setDeletingEventId(null);
   };
@@ -198,7 +205,24 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
   const sc = STATUS_CONFIG[status] || STATUS_CONFIG["Draft"];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 relative">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-2xl shadow-black/50 text-sm font-semibold border ${
+              toast.ok
+                ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-300"
+                : "bg-rose-950/90 border-rose-500/30 text-rose-300"
+            }`}
+          >
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <Link href="/admin/projects" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-white transition-colors">
         <ArrowLeft className="h-3.5 w-3.5" /> Back to Projects
       </Link>
