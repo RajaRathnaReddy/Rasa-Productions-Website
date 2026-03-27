@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { SecureAudioPlayer } from "@/components/project/SecureAudioPlayer";
-import { FileAudio, History, LayoutGrid, MessageSquare, Music2, Users, CheckCircle2, CircleDot } from "lucide-react";
-import { motion } from "framer-motion";
+import { FileAudio, History, LayoutGrid, MessageSquare, Music2, Users, CheckCircle2, CircleDot, Send, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/utils/supabase/client";
 
 const iconStyles: Record<string, string> = {
   emerald: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.35)]",
@@ -17,8 +18,46 @@ const iconStyles: Record<string, string> = {
   cyan: "bg-cyan-500/15 border-cyan-500/40 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.35)]",
 };
 
-export function ProjectClientView({ project, events, activeAudioUrl }: { project: any, events: any[], activeAudioUrl: string }) {
+export function ProjectClientView({ project, events: initialEvents, activeAudioUrl: initialAudioUrl }: { project: any, events: any[], activeAudioUrl: string }) {
+  const supabase = createClient();
+  const [events] = useState(initialEvents);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState(initialAudioUrl);
+  const [activeAudioId, setActiveAudioId] = useState(() => initialEvents.find(e => e.audio_url)?.id || null);
   const [feedback, setFeedback] = useState("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSwitchAudio = (ev: any) => {
+    setCurrentAudioUrl(ev.audio_url);
+    setActiveAudioId(ev.id);
+  };
+
+  const handleSendFeedback = async (eventId: string) => {
+    if (!feedback.trim()) return;
+    setFeedbackLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("events").insert({
+      project_id: project.id,
+      type: "Client Feedback",
+      title: `Feedback from ${project.client_name}`,
+      description: feedback,
+    });
+    if (error) {
+      showToast("❌ Failed to send feedback.");
+    } else {
+      setFeedback("");
+      setFeedbackSent(true);
+      showToast("✅ Feedback sent to the studio!");
+      setTimeout(() => setFeedbackSent(false), 4000);
+    }
+    setFeedbackLoading(false);
+  };
 
   // Map database events to timeline styles
   const mappedEvents = events.map((ev, index) => {
@@ -30,7 +69,9 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
     if (ev.type.toLowerCase().includes("mix") || ev.audio_url) {
       color = "indigo"; Icon = FileAudio; chip = "Audio"; chipStyle = "bg-indigo-500/20 text-indigo-300 border-indigo-500/30";
     } else if (ev.type.toLowerCase().includes("feedback") || ev.type.toLowerCase().includes("revision")) {
-      color = "rose"; Icon = MessageSquare; chip = "Pending"; chipStyle = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+      color = "rose"; Icon = MessageSquare; chip = "Feedback"; chipStyle = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+    } else if (ev.type.toLowerCase().includes("master") || ev.type.toLowerCase().includes("approved")) {
+      color = "emerald"; Icon = CheckCircle2; chip = "Done"; chipStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
     }
 
     return {
@@ -43,12 +84,28 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
       time: new Date(ev.created_at).toLocaleTimeString("en-GB", { hour: '2-digit', minute: '2-digit', hour12: false }),
       chip,
       chipStyle,
-      action: ev.type.toLowerCase().includes("mix") ? "view" : null // Simple rule for MVP
+      hasAudio: !!ev.audio_url,
+      rawEv: ev,
     };
   });
 
+  const audioVersions = events.filter(e => e.audio_url);
+
   return (
-    <div className="w-full animate-in fade-in duration-700 pb-20">
+    <div className="w-full animate-in fade-in duration-700 pb-20 relative">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-6 right-6 z-50 bg-[#1a1a2e] border border-white/10 text-white text-sm font-semibold px-5 py-3 rounded-xl shadow-2xl shadow-black/50"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── COMPACT HERO ── */}
       <div className="relative w-full h-[20vh] min-h-[140px] flex items-center rounded-2xl overflow-hidden mb-10 border border-white/5 shadow-[0_12px_50px_rgba(0,0,0,0.5)] group">
@@ -76,6 +133,11 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
               project.status === "Awaiting Client Feedback" ? "bg-amber-400 text-amber-950" :
               "bg-indigo-600 text-white"
             }`}>{project.status}</span>
+            {project.status === "Awaiting Client Feedback" && (
+              <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-[9px] text-amber-300 font-bold animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Action Required
+              </span>
+            )}
             <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight leading-tight truncate">{project.song_title}</h1>
             <p className="text-sm text-white/35 font-medium mt-0.5 truncate">{project.project_title}</p>
           </div>
@@ -94,20 +156,19 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
         </div>
       </div>
 
-      {/* Audio Player - Plays active signed URL */}
-      <SecureAudioPlayer src={activeAudioUrl} title={project.song_title || "Unknown Track"} coverUrl={project.cover_url} />
+      {/* Audio Player */}
+      <SecureAudioPlayer src={currentAudioUrl} title={project.song_title || "Unknown Track"} coverUrl={project.cover_url} />
 
       {/* ── MAIN GRID ── */}
       <div className="max-w-[1400px] mx-auto w-full pb-32 grid grid-cols-1 lg:grid-cols-3 gap-10 px-2 md:px-8 mt-10">
 
-        {/* Left: Alternating Timeline */}
+        {/* Left: Timeline */}
         <div className="lg:col-span-2">
           <h2 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-indigo-400 mb-8 border-b border-white/8 pb-3 flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-rose-400" /> Project Timeline
           </h2>
 
           <div className="relative">
-            {/* Center glowing spine */}
             <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500/50 via-fuchsia-500/30 to-transparent shadow-[0_0_8px_rgba(99,102,241,0.4)]" />
 
             <div className="space-y-8">
@@ -138,9 +199,59 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
                       </div>
                       <div className={`text-sm text-muted-foreground my-2 ${isRight ? "" : "text-right"}`}>{evt.sub}</div>
                       
-                      {evt.action && (
+                      {evt.hasAudio && (
                         <div className={isRight ? "" : "flex justify-end"}>
-                          <ActionButton action={evt.action as any} feedback={feedback} setFeedback={setFeedback} />
+                          <button
+                            onClick={() => handleSwitchAudio(evt.rawEv)}
+                            className={`text-xs h-8 px-3 rounded-lg font-semibold flex items-center gap-1.5 transition-all mt-2 ${
+                              activeAudioId === evt.id 
+                              ? "bg-indigo-500/30 border border-indigo-500/50 text-indigo-200" 
+                              : "bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/25 text-indigo-300 hover:text-white"
+                            }`}
+                          >
+                            {activeAudioId === evt.id ? (
+                              <><span className="flex gap-0.5 items-end h-3"><span className="w-0.5 animate-[equalizer_0.8s_ease-in-out_infinite] bg-indigo-400 rounded-sm" style={{height:'50%'}} /><span className="w-0.5 animate-[equalizer_0.8s_ease-in-out_0.2s_infinite] bg-indigo-400 rounded-sm" style={{height:'100%'}} /><span className="w-0.5 animate-[equalizer_0.8s_ease-in-out_0.4s_infinite] bg-indigo-400 rounded-sm" style={{height:'70%'}} /></span> Now Playing</>
+                            ) : (
+                              <><FileAudio className="w-3 h-3" /> Play This Version</>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {(evt.chip === "Feedback" || evt.rawEv.type === "Feedback Needed") && (
+                        <div className={isRight ? "" : "flex justify-end"}>
+                          <Dialog>
+                            <DialogTrigger className="text-xs bg-rose-500/15 border border-rose-500/25 hover:bg-rose-500/25 text-rose-300 hover:text-white h-8 px-3 rounded-lg font-semibold flex items-center gap-1.5 transition-all mt-2">
+                              <MessageSquare className="w-3 h-3" /> Add Corrections
+                            </DialogTrigger>
+                            <DialogContent className="bg-[#13131f]/98 backdrop-blur-3xl border-white/10">
+                              <DialogHeader><DialogTitle className="text-white font-black">Send Feedback to Studio</DialogTitle></DialogHeader>
+                              {feedbackSent ? (
+                                <div className="text-center py-8 space-y-3">
+                                  <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                                  <p className="text-white font-semibold">Feedback received!</p>
+                                  <p className="text-white/40 text-sm">The studio has been notified.</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <Textarea 
+                                    placeholder="e.g. at 2:15, the bass is too loud. Also the hi-hat feels slightly off..." 
+                                    className="min-h-[150px] mt-4 bg-white/5 border-white/10 text-white placeholder:text-white/25" 
+                                    value={feedback} 
+                                    onChange={(e) => setFeedback(e.target.value)} 
+                                  />
+                                  <Button 
+                                    onClick={() => handleSendFeedback(evt.id)} 
+                                    disabled={feedbackLoading || !feedback.trim()}
+                                    className="w-full bg-gradient-to-r from-rose-600 to-orange-600 text-white mt-4 gap-2"
+                                  >
+                                    {feedbackLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    {feedbackLoading ? "Sending..." : "Send to Studio"}
+                                  </Button>
+                                </>
+                              )}
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       )}
                     </motion.div>
@@ -176,27 +287,63 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
         <div className="space-y-5">
           <h2 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-7 border-b border-white/8 pb-3">Action Center</h2>
 
+          {/* Audio Versions with switcher */}
           <Card className="bg-white/[0.04] backdrop-blur-xl border border-white/10 p-5 rounded-2xl">
             <h3 className="text-[10px] font-black text-white/35 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <History className="w-3.5 h-3.5 text-indigo-400" /> Audio Versions
             </h3>
             <div className="space-y-2">
-              {events.filter((e) => e.audio_url).map((ev, i, arr) => (
-                <button key={ev.id} className={`w-full flex items-center justify-between px-4 h-11 rounded-xl transition-all text-sm font-semibold ${
-                  i === 0 
-                  ? "bg-indigo-500/15 border border-indigo-500/30 text-white" 
-                  : "bg-white/5 border border-white/8 hover:bg-white/10 text-white/55 hover:text-white"
-                }`}>
+              {audioVersions.map((ev) => (
+                <button
+                  key={ev.id}
+                  onClick={() => handleSwitchAudio(ev)}
+                  className={`w-full flex items-center justify-between px-4 h-11 rounded-xl transition-all text-sm font-semibold ${
+                    activeAudioId === ev.id
+                    ? "bg-indigo-500/20 border border-indigo-500/40 text-white shadow-[0_0_15px_rgba(99,102,241,0.25)]" 
+                    : "bg-white/5 border border-white/8 hover:bg-white/10 text-white/55 hover:text-white"
+                  }`}
+                >
                   <span className="truncate max-w-[150px] text-left">{ev.title}</span>
-                  {i === 0 && <span className="text-[9px] bg-indigo-500 text-white font-black px-2 py-0.5 rounded-full shrink-0">Active</span>}
+                  {activeAudioId === ev.id ? (
+                    <span className="flex gap-0.5 items-end h-3 shrink-0">
+                      <span className="w-0.5 bg-indigo-400 rounded-sm" style={{height:'50%', animation: 'equalizer 0.8s ease-in-out infinite'}} />
+                      <span className="w-0.5 bg-indigo-400 rounded-sm" style={{height:'100%', animation: 'equalizer 0.8s ease-in-out 0.2s infinite'}} />
+                      <span className="w-0.5 bg-indigo-400 rounded-sm" style={{height:'70%', animation: 'equalizer 0.8s ease-in-out 0.4s infinite'}} />
+                    </span>
+                  ) : (
+                    <FileAudio className="w-3.5 h-3.5 shrink-0 text-white/20" />
+                  )}
                 </button>
               ))}
-              {events.filter((e) => e.audio_url).length === 0 && (
+              {audioVersions.length === 0 && (
                 <div className="text-xs text-center text-muted-foreground p-2">Wait for the admin to upload an audio file.</div>
               )}
             </div>
           </Card>
 
+          {/* Quick Feedback panel */}
+          <Card className="bg-white/[0.04] backdrop-blur-xl border border-white/10 p-5 rounded-2xl">
+            <h3 className="text-[10px] font-black text-white/35 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+              <MessageSquare className="w-3.5 h-3.5 text-rose-400" /> Quick Note to Studio
+            </h3>
+            <Textarea
+              placeholder="Any thoughts? Leave a quick note for the team..."
+              className="min-h-[90px] bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm resize-none"
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+            />
+            <Button 
+              onClick={() => handleSendFeedback("")} 
+              disabled={feedbackLoading || !feedback.trim()}
+              size="sm"
+              className="w-full mt-3 bg-gradient-to-r from-rose-600 to-orange-600 text-white gap-2 h-9"
+            >
+              {feedbackLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              {feedbackLoading ? "Sending..." : "Send Note"}
+            </Button>
+          </Card>
+
+          {/* Project Team */}
           <Card className="bg-white/[0.04] backdrop-blur-xl border border-white/10 p-5 rounded-2xl">
             <h3 className="text-[10px] font-black text-white/35 uppercase tracking-[0.2em] mb-5 flex items-center gap-2">
               <Users className="w-3.5 h-3.5 text-rose-400" /> Project Team
@@ -226,47 +373,5 @@ export function ProjectClientView({ project, events, activeAudioUrl }: { project
         </div>
       </div>
     </div>
-  );
-}
-
-function ActionButton({ action, feedback, setFeedback }: {
-  action: "view" | "lyrics" | "feedback";
-  feedback: string;
-  setFeedback: (v: string) => void;
-}) {
-  if (action === "view") return (
-    <Dialog>
-      <DialogTrigger className="text-xs bg-indigo-500/15 border border-indigo-500/25 hover:bg-indigo-500/25 text-indigo-300 hover:text-white h-8 px-3 rounded-lg font-semibold flex items-center gap-1.5 transition-all mt-2">
-        <FileAudio className="w-3 h-3" /> View Admin Notes
-      </DialogTrigger>
-      <DialogContent className="bg-[#13131f]/98 backdrop-blur-3xl border-white/10">
-        <DialogHeader><DialogTitle className="text-white font-black">Admin Notes</DialogTitle></DialogHeader>
-        <p className="text-white/60 text-sm leading-relaxed mt-4">Please review the vocal mixing. The instrumental has been mastered to -14 LUFS. Look out for the transition at 1:45.</p>
-      </DialogContent>
-    </Dialog>
-  );
-  if (action === "lyrics") return (
-    <Dialog>
-      <DialogTrigger className="text-xs bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 hover:text-white h-8 px-3 rounded-lg font-semibold flex items-center gap-1.5 transition-all mt-2">
-        <Music2 className="w-3 h-3" /> Submit Lyrics
-      </DialogTrigger>
-      <DialogContent className="bg-[#13131f]/98 backdrop-blur-3xl border-white/10">
-        <DialogHeader><DialogTitle className="text-white font-black">Submit Lyrics</DialogTitle></DialogHeader>
-        <Textarea placeholder="Paste your lyrics here..." className="min-h-[200px] mt-4 bg-white/5 border-white/10 text-white placeholder:text-white/25" />
-        <Button className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white mt-4">Save Lyrics</Button>
-      </DialogContent>
-    </Dialog>
-  );
-  return (
-    <Dialog>
-      <DialogTrigger className="text-xs bg-rose-500/15 border border-rose-500/25 hover:bg-rose-500/25 text-rose-300 hover:text-white h-8 px-3 rounded-lg font-semibold flex items-center gap-1.5 transition-all mt-2">
-        <MessageSquare className="w-3 h-3" /> Add Corrections
-      </DialogTrigger>
-      <DialogContent className="bg-[#13131f]/98 backdrop-blur-3xl border-white/10">
-        <DialogHeader><DialogTitle className="text-white font-black">Feedback Corrections</DialogTitle></DialogHeader>
-        <Textarea placeholder="e.g. at 2:15, the bass is too loud..." className="min-h-[150px] mt-4 bg-white/5 border-white/10 text-white placeholder:text-white/25" value={feedback} onChange={(e) => setFeedback(e.target.value)} />
-        <Button onClick={() => { alert("Feedback: " + feedback); setFeedback(""); }} className="w-full bg-gradient-to-r from-rose-600 to-orange-600 text-white mt-4">Send Corrections</Button>
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -169,6 +169,15 @@ export function ClientDashboardView({ projects, stats }: { projects: Project[], 
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
                       
+                      {project.status === "Awaiting Client Feedback" && (
+                        <div className="absolute top-3 right-3 z-10">
+                          <span className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                          </span>
+                        </div>
+                      )}
+                      
                       <div className="absolute top-3 left-3 z-10">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] shadow-lg drop-shadow-md ${
                           project.status === "Final Delivered"
