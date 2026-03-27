@@ -1,14 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { Card } from "@/components/ui/card";
-import { SecureAudioPlayer } from "@/components/project/SecureAudioPlayer";
-import { FileAudio, History, LayoutGrid, MessageSquare, Music2, Users, CheckCircle2, CircleDot, Send, Loader2 } from "lucide-react";
+import { FileAudio, History, LayoutGrid, MessageSquare, Music2, Users, CheckCircle2, CircleDot, Send, Loader2, Stamp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import type { WavesurferPlayerHandle } from "@/components/project/WavesurferPlayer";
+
+// Dynamic import — wavesurfer.js is browser-only
+const WavesurferPlayer = dynamic(() => import("@/components/project/WavesurferPlayer"), {
+  ssr: false,
+  loading: () => (
+    <div className="sticky top-16 z-30 mx-auto max-w-[1400px] px-2 md:px-8 mb-6">
+      <div className="h-[90px] rounded-2xl bg-[#0a0a1a]/95 border border-white/10 animate-pulse flex items-center justify-center">
+        <span className="text-white/20 text-sm">Initialising waveform…</span>
+      </div>
+    </div>
+  ),
+});
 
 const iconStyles: Record<string, string> = {
   emerald: "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.35)]",
@@ -18,41 +31,81 @@ const iconStyles: Record<string, string> = {
   cyan: "bg-cyan-500/15 border-cyan-500/40 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.35)]",
 };
 
+function formatTimestamp(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** Parse leading timestamp like [1:24] from a description */
+function parseTimestamp(description: string): { seconds: number | null; text: string } {
+  const match = description?.match(/^\[(\d+):(\d{2})\]\s*/);
+  if (match) {
+    const seconds = parseInt(match[1]) * 60 + parseInt(match[2]);
+    const text = description.slice(match[0].length);
+    return { seconds, text };
+  }
+  return { seconds: null, text: description || "" };
+}
+
 export function ProjectClientView({ project, events: initialEvents, activeAudioUrl: initialAudioUrl }: { project: any, events: any[], activeAudioUrl: string }) {
   const supabase = createClient();
+  const playerRef = useRef<WavesurferPlayerHandle>(null);
+
   const [events, setEvents] = useState(initialEvents);
   const [currentAudioUrl, setCurrentAudioUrl] = useState(initialAudioUrl);
-  const [activeAudioId, setActiveAudioId] = useState(() => initialEvents.find(e => e.audio_url)?.id || null);
+  const [activeAudioId, setActiveAudioId] = useState(() => initialEvents.find((e: any) => e.audio_url)?.id || null);
   const [feedback, setFeedback] = useState("");
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [capturedTimestamp, setCapturedTimestamp] = useState<number | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
   const handleSwitchAudio = (ev: any) => {
     setCurrentAudioUrl(ev.audio_url);
     setActiveAudioId(ev.id);
+    setCapturedTimestamp(null);
   };
+
+  // Capture current playback time and stamp it onto the comment
+  const handleCaptureTimestamp = useCallback(() => {
+    const t = playerRef.current?.getCurrentTime() ?? 0;
+    setCapturedTimestamp(Math.floor(t));
+  }, []);
+
+  const handleClearTimestamp = useCallback(() => setCapturedTimestamp(null), []);
+
+  // Seek to a specific second when clicking a timestamp badge
+  const handleSeekTo = useCallback((seconds: number) => {
+    playerRef.current?.seekTo(seconds);
+  }, []);
 
   const handleSendFeedback = async (eventId: string) => {
     if (!feedback.trim()) return;
     setFeedbackLoading(true);
+
+    // Prefix with timestamp if captured
+    const prefix = capturedTimestamp !== null ? `[${formatTimestamp(capturedTimestamp)}] ` : "";
+    const fullDescription = prefix + feedback.trim();
+
     const newEvent = {
       id: `temp-${Date.now()}`,
       project_id: project.id,
       type: "Client Feedback",
       title: `Feedback from ${project.client_name}`,
-      description: feedback,
+      description: fullDescription,
       audio_url: null,
       created_at: new Date().toISOString(),
     };
     // Optimistically add to timeline immediately
-    setEvents(prev => [newEvent, ...prev]);
+    setEvents((prev: any[]) => [newEvent, ...prev]);
     setFeedback("");
+    setCapturedTimestamp(null);
     showToast("✅ Feedback sent to the studio!");
 
     const { data, error } = await supabase.from("events").insert({
@@ -63,12 +116,10 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
     }).select().single();
 
     if (error) {
-      // Roll back on error
-      setEvents(prev => prev.filter(e => e.id !== newEvent.id));
+      setEvents((prev: any[]) => prev.filter((e: any) => e.id !== newEvent.id));
       showToast("❌ Failed to send feedback.");
     } else if (data) {
-      // Replace temp with real DB record
-      setEvents(prev => prev.map(e => e.id === newEvent.id ? data : e));
+      setEvents((prev: any[]) => prev.map((e: any) => e.id === newEvent.id ? data : e));
       setFeedbackSent(true);
       setTimeout(() => setFeedbackSent(false), 4000);
     }
@@ -76,7 +127,7 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
   };
 
   // Map database events to timeline styles
-  const mappedEvents = events.map((ev, index) => {
+  const mappedEvents = events.map((ev: any, index: number) => {
     let color = "cyan";
     let Icon = CircleDot;
     let chip = "Update";
@@ -90,12 +141,15 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
       color = "emerald"; Icon = CheckCircle2; chip = "Done"; chipStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
     }
 
+    const { seconds: tsSeconds, text: tsText } = parseTimestamp(ev.description);
+
     return {
       id: ev.id,
       Icon,
       color,
       label: ev.title,
-      sub: ev.description,
+      sub: tsText,
+      timestampSeconds: tsSeconds,
       date: new Date(ev.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }),
       time: new Date(ev.created_at).toLocaleTimeString("en-GB", { hour: '2-digit', minute: '2-digit', hour12: false }),
       chip,
@@ -105,7 +159,7 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
     };
   });
 
-  const audioVersions = events.filter(e => e.audio_url);
+  const audioVersions = events.filter((e: any) => e.audio_url);
 
   return (
     <div className="w-full animate-in fade-in duration-700 pb-20 relative">
@@ -124,7 +178,7 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
       </AnimatePresence>
 
       {/* ── COMPACT HERO ── */}
-      <div className="relative w-full h-[20vh] min-h-[140px] flex items-center rounded-2xl overflow-hidden mb-10 border border-white/5 shadow-[0_12px_50px_rgba(0,0,0,0.5)] group">
+      <div className="relative w-full h-[20vh] min-h-[140px] flex items-center rounded-2xl overflow-hidden mb-6 border border-white/5 shadow-[0_12px_50px_rgba(0,0,0,0.5)] group">
         {project.cover_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -159,8 +213,8 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
           </div>
           <div className="hidden md:flex gap-5 shrink-0 pr-4">
             {[
-              ["Tempo", project.bpm || "--"], 
-              ["Key", project.key || "--"], 
+              ["Tempo", project.bpm || "--"],
+              ["Key", project.key || "--"],
               ["Engineer", "Rasa Prod."]
             ].map(([label, value], i) => (
               <div key={i} className="flex flex-col items-end">
@@ -172,8 +226,13 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
         </div>
       </div>
 
-      {/* Audio Player */}
-      <SecureAudioPlayer src={currentAudioUrl} title={project.song_title || "Unknown Track"} coverUrl={project.cover_url} />
+      {/* ── WAVESURFER PLAYER ── */}
+      <WavesurferPlayer
+        ref={playerRef}
+        src={currentAudioUrl}
+        title={project.song_title || "Unknown Track"}
+        coverUrl={project.cover_url}
+      />
 
       {/* ── MAIN GRID ── */}
       <div className="max-w-[1400px] mx-auto w-full pb-32 grid grid-cols-1 lg:grid-cols-3 gap-10 px-2 md:px-8 mt-10">
@@ -213,7 +272,19 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
                         </div>
                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border shrink-0 mt-0.5 ${evt.chipStyle}`}>{evt.chip}</span>
                       </div>
-                      <div className={`text-sm text-muted-foreground my-2 ${isRight ? "" : "text-right"}`}>{evt.sub}</div>
+
+                      {/* Timestamp badge — clickable to seek */}
+                      {evt.timestampSeconds !== null && (
+                        <button
+                          onClick={() => handleSeekTo(evt.timestampSeconds!)}
+                          title={`Seek to ${formatTimestamp(evt.timestampSeconds!)}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/25 text-fuchsia-300 text-[9px] font-black hover:bg-fuchsia-500/30 hover:text-white transition-all cursor-pointer mb-1.5 ${isRight ? "" : "float-right"}`}
+                        >
+                          <Stamp className="w-2.5 h-2.5" /> {formatTimestamp(evt.timestampSeconds!)}
+                        </button>
+                      )}
+                      
+                      <div className={`text-sm text-muted-foreground my-2 clear-both ${isRight ? "" : "text-right"}`}>{evt.sub}</div>
                       
                       {evt.hasAudio && (
                         <div className={isRight ? "" : "flex justify-end"}>
@@ -250,9 +321,27 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
                                 </div>
                               ) : (
                                 <>
+                                  {/* Timestamp capture row */}
+                                  <div className="flex items-center gap-3 mt-2">
+                                    <button
+                                      type="button"
+                                      onClick={handleCaptureTimestamp}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-fuchsia-500/15 border border-fuchsia-500/25 text-fuchsia-300 text-xs font-bold hover:bg-fuchsia-500/30 hover:text-white transition-all"
+                                    >
+                                      <Stamp className="w-3 h-3" /> Stamp Current Time
+                                    </button>
+                                    {capturedTimestamp !== null ? (
+                                      <span className="flex items-center gap-1.5 text-xs text-fuchsia-300 font-mono">
+                                        ⏱ {formatTimestamp(capturedTimestamp)}
+                                        <button onClick={handleClearTimestamp} className="text-white/25 hover:text-rose-400 transition-colors text-[10px]">✕</button>
+                                      </span>
+                                    ) : (
+                                      <span className="text-white/25 text-[10px]">No timestamp — click to stamp current playback position</span>
+                                    )}
+                                  </div>
                                   <Textarea 
-                                    placeholder="e.g. at 2:15, the bass is too loud. Also the hi-hat feels slightly off..." 
-                                    className="min-h-[150px] mt-4 bg-white/5 border-white/10 text-white placeholder:text-white/25" 
+                                    placeholder="e.g. the bass is too loud here. Also the hi-hat feels slightly off..." 
+                                    className="min-h-[150px] mt-3 bg-white/5 border-white/10 text-white placeholder:text-white/25" 
                                     value={feedback} 
                                     onChange={(e) => setFeedback(e.target.value)} 
                                   />
@@ -303,13 +392,13 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
         <div className="space-y-5">
           <h2 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-7 border-b border-white/8 pb-3">Action Center</h2>
 
-          {/* Audio Versions with switcher */}
+          {/* Audio Versions */}
           <Card className="bg-white/[0.04] backdrop-blur-xl border border-white/10 p-5 rounded-2xl">
             <h3 className="text-[10px] font-black text-white/35 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <History className="w-3.5 h-3.5 text-indigo-400" /> Audio Versions
             </h3>
             <div className="space-y-2">
-              {audioVersions.map((ev) => (
+              {audioVersions.map((ev: any) => (
                 <button
                   key={ev.id}
                   onClick={() => handleSwitchAudio(ev)}
@@ -337,11 +426,31 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
             </div>
           </Card>
 
-          {/* Quick Feedback panel */}
+          {/* Quick Feedback with timestamp */}
           <Card className="bg-white/[0.04] backdrop-blur-xl border border-white/10 p-5 rounded-2xl">
             <h3 className="text-[10px] font-black text-white/35 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
               <MessageSquare className="w-3.5 h-3.5 text-rose-400" /> Quick Note to Studio
             </h3>
+            
+            {/* Timestamp capture */}
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                type="button"
+                onClick={handleCaptureTimestamp}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-300 text-[10px] font-bold hover:bg-fuchsia-500/25 hover:text-white transition-all"
+              >
+                <Stamp className="w-3 h-3" /> Stamp Time
+              </button>
+              {capturedTimestamp !== null ? (
+                <span className="flex items-center gap-1 text-[10px] text-fuchsia-300 font-mono bg-fuchsia-500/10 px-2 py-1 rounded-lg border border-fuchsia-500/20">
+                  ⏱ {formatTimestamp(capturedTimestamp)}
+                  <button onClick={handleClearTimestamp} className="text-white/25 hover:text-rose-400 ml-1 transition-colors">✕</button>
+                </span>
+              ) : (
+                <span className="text-white/20 text-[9px]">Press while listening to stamp the time</span>
+              )}
+            </div>
+
             <Textarea
               placeholder="Any thoughts? Leave a quick note for the team..."
               className="min-h-[90px] bg-white/5 border-white/10 text-white placeholder:text-white/20 text-sm resize-none"

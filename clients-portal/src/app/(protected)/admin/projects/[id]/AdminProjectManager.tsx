@@ -54,6 +54,37 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     setTimeout(() => setToast(null), 4000);
   };
 
+  /* ── EMAIL NOTIFICATION HELPER ── */
+  const sendNotification = async ({
+    type,
+    eventTitle,
+    eventDescription,
+  }: {
+    type: "new_mix" | "awaiting_feedback" | "status_update";
+    eventTitle: string;
+    eventDescription?: string;
+  }) => {
+    if (!project.client_email) return; // no email on record — skip silently
+    try {
+      await fetch("/api/notify-client", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientEmail: project.client_email,
+          clientName: project.client_name,
+          songTitle: project.song_title,
+          projectTitle: project.project_title,
+          projectId: project.id,
+          eventTitle,
+          eventDescription,
+          type,
+        }),
+      });
+    } catch (err) {
+      console.error("[notify] Failed to send notification email:", err);
+    }
+  };
+
   // Cover image state
   const [coverUrl, setCoverUrl] = useState<string | null>(project.cover_url || null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -75,7 +106,18 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
   const handleUpdateStatus = async (newStatus: string) => {
     setIsUpdatingStatus(true);
     const { error } = await supabase.from("projects").update({ status: newStatus }).eq("id", project.id);
-    if (!error) { setStatus(newStatus); router.refresh(); }
+    if (!error) {
+      setStatus(newStatus);
+      router.refresh();
+      // Fire email when admin marks project as Awaiting Feedback
+      if (newStatus === "Awaiting Client Feedback") {
+        sendNotification({
+          type: "awaiting_feedback",
+          eventTitle: "Your Feedback is Needed",
+          eventDescription: `Status has been updated to "${newStatus}". Please review the latest mix and share your thoughts.`,
+        });
+      }
+    }
     setIsUpdatingStatus(false);
   };
 
@@ -185,6 +227,16 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     } else if (newEvent) {
       setEvents([newEvent, ...events]);
       (e.target as HTMLFormElement).reset();
+      showToast("✅ Event created!", true);
+      // Fire email when a new mix or audio upload is created
+      if (audioUrl || type.toLowerCase().includes("mix") || type.toLowerCase().includes("feedback")) {
+        const notifType = audioUrl || type.toLowerCase().includes("mix") ? "new_mix" : "awaiting_feedback";
+        sendNotification({
+          type: notifType,
+          eventTitle: title,
+          eventDescription: desc,
+        });
+      }
     }
 
     setUploadProgress("");
