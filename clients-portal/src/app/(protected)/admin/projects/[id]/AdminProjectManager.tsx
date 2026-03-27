@@ -86,18 +86,25 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
 
     const ext = file.name.split(".").pop();
     const path = `${project.client_id}/${project.id}-cover.${ext}`;
-    const { data: upData, error: upErr } = await supabase.storage
-      .from("public-covers")
-      .upload(path, file, { upsert: true });
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    uploadData.append("path", path);
 
-    if (upErr) {
-      alert("Cover upload failed: " + upErr.message);
+    let publicUrl = "";
+    try {
+      const res = await fetch(process.env.NEXT_PUBLIC_UPLOAD_API_URL || "https://rasaproductions.in/upload.php", {
+        method: "POST",
+        headers: { "X-API-KEY": process.env.NEXT_PUBLIC_UPLOAD_API_KEY || "RASA_STUDIO_UPLOAD_2026_xYz987" },
+        body: uploadData
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const resJson = await res.json();
+      publicUrl = resJson.url;
+    } catch (err: any) {
+      alert("Cover upload failed: " + err.message);
       setIsUploadingCover(false);
       return;
     }
-
-    const { data: urlData } = supabase.storage.from("public-covers").getPublicUrl(upData.path);
-    const publicUrl = urlData.publicUrl;
 
     await supabase.from("projects").update({ cover_url: publicUrl }).eq("id", project.id);
     setCoverUrl(publicUrl);
@@ -135,17 +142,25 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
       setUploadProgress("Uploading audio…");
       const fileExt = file.name.split(".").pop();
       const fileName = `${project.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("secure-audio")
-        .upload(fileName, file);
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("path", fileName);
 
-      if (uploadError) {
+      try {
+        const uploadRes = await fetch(process.env.NEXT_PUBLIC_UPLOAD_API_URL || "https://rasaproductions.in/upload.php", {
+          method: "POST",
+          headers: { "X-API-KEY": process.env.NEXT_PUBLIC_UPLOAD_API_KEY || "RASA_STUDIO_UPLOAD_2026_xYz987" },
+          body: uploadData
+        });
+        if (!uploadRes.ok) throw new Error(await uploadRes.text());
+        const json = await uploadRes.json();
+        audioUrl = json.url;
+      } catch (uploadError: any) {
         alert("Audio upload failed: " + uploadError.message);
         setIsAddingEvent(false);
         setUploadProgress("");
         return;
       }
-      audioUrl = uploadData.path;
     }
 
     setUploadProgress("Saving…");

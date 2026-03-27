@@ -31,12 +31,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   let activeAudioUrl = "";
 
   if (latestAudioEvent?.audio_url) {
-    const { data: signedUrlData } = await supabase.storage
-      .from("secure-audio")
-      .createSignedUrl(latestAudioEvent.audio_url, 3600); // 1 hour expiry
-    
-    if (signedUrlData) {
-      activeAudioUrl = signedUrlData.signedUrl;
+    if (latestAudioEvent.audio_url.startsWith("http")) {
+      // It's a direct URL to the cPanel web host!
+      activeAudioUrl = latestAudioEvent.audio_url;
+    } else {
+      // Legacy Supabase Storage link
+      const { data: signedUrlData } = await supabase.storage
+        .from("secure-audio")
+        .createSignedUrl(latestAudioEvent.audio_url, 3600); // 1 hour expiry
+      
+      if (signedUrlData) {
+        activeAudioUrl = signedUrlData.signedUrl;
+      }
     }
   }
 

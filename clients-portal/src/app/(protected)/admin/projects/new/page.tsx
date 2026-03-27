@@ -46,24 +46,32 @@ export default function CreateProjectPage() {
 
     let cover_url: string | null = null;
 
-    // Upload cover image if provided
+    // Upload cover image to cPanel PHP Endpoint
     if (coverFile) {
       const ext = coverFile.name.split(".").pop();
       const path = `${client_id || "unknown"}/${Date.now()}.${ext}`;
-      const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from("public-covers")
-        .upload(path, coverFile, { upsert: true });
+      
+      const uploadData = new FormData();
+      uploadData.append("file", coverFile);
+      uploadData.append("path", path);
 
-      if (uploadErr) {
-        setError("Cover image upload failed: " + uploadErr.message);
+      try {
+        const uploadRes = await fetch(process.env.NEXT_PUBLIC_UPLOAD_API_URL || "https://rasaproductions.in/upload.php", {
+          method: "POST",
+          headers: {
+            "X-API-KEY": process.env.NEXT_PUBLIC_UPLOAD_API_KEY || "RASA_STUDIO_UPLOAD_2026_xYz987"
+          },
+          body: uploadData
+        });
+
+        if (!uploadRes.ok) throw new Error(await uploadRes.text());
+        const resJson = await uploadRes.json();
+        cover_url = resJson.url;
+      } catch (err: any) {
+        setError("Cover image upload failed: " + err.message);
         setLoading(false);
         return;
       }
-
-      const { data: urlData } = supabase.storage
-        .from("public-covers")
-        .getPublicUrl(uploadData.path);
-      cover_url = urlData.publicUrl;
     }
 
     const { data, error: insertError } = await supabase
