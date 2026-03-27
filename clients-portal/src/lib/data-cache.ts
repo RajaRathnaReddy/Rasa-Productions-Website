@@ -7,10 +7,11 @@ import { createClient } from "@/utils/supabase/server";
  */
 export const getCachedProjects = cache(async () => {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("projects")
-    .select("id, project_title, song_title, client_name, client_id, status, cover_url, created_at, bpm, key, notes, client_email")
+    .select("*")
     .order("created_at", { ascending: false });
+  if (error) console.error("[data-cache] getCachedProjects error:", error.message);
   return data ?? [];
 });
 

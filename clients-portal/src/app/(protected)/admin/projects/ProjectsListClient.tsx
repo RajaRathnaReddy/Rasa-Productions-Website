@@ -33,17 +33,25 @@ type Project = {
 export default function ProjectsListClient({ projects }: { projects: Project[] }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [clientFilter, setClientFilter] = useState("All");
+
+  // Extract unique client names for the filter dropdown
+  const uniqueClients = useMemo(() => {
+    const names = [...new Set(projects.map(p => p.client_name).filter(Boolean))];
+    return names.sort();
+  }, [projects]);
 
   const filtered = useMemo(() => {
     return projects.filter((p) => {
-      const matchesSearch = 
-        p.client_name.toLowerCase().includes(search.toLowerCase()) ||
-        p.song_title.toLowerCase().includes(search.toLowerCase()) ||
-        p.project_title.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        (p.client_name || "").toLowerCase().includes(search.toLowerCase()) ||
+        (p.song_title || "").toLowerCase().includes(search.toLowerCase()) ||
+        (p.project_title || "").toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "All" || p.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesClient = clientFilter === "All" || p.client_name === clientFilter;
+      return matchesSearch && matchesStatus && matchesClient;
     });
-  }, [projects, search, statusFilter]);
+  }, [projects, search, statusFilter, clientFilter]);
 
   const stats = {
     total: projects.length,
@@ -89,7 +97,7 @@ export default function ProjectsListClient({ projects }: { projects: Project[] }
         ))}
       </div>
 
-      {/* Search & Filter */}
+      {/* Search, Client & Status Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
@@ -101,6 +109,23 @@ export default function ProjectsListClient({ projects }: { projects: Project[] }
             className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all"
           />
         </div>
+        {/* Client filter */}
+        {uniqueClients.length > 0 && (
+          <div className="relative">
+            <TrendingUp className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+            <select
+              value={clientFilter}
+              onChange={(e) => setClientFilter(e.target.value)}
+              className="w-full sm:w-48 pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-fuchsia-500/50 transition-all appearance-none cursor-pointer"
+            >
+              <option value="All" className="bg-zinc-900">All Clients</option>
+              {uniqueClients.map(c => (
+                <option key={c} value={c} className="bg-zinc-900">{c}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {/* Status filter */}
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
           <select
