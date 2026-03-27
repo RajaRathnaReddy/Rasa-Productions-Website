@@ -21,13 +21,19 @@ export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "
       <div className="container flex h-16 items-center px-6 md:px-10 max-w-7xl mx-auto">
 
         {/* ── RP LOGO IMAGE ── */}
-        <Link href={logoHref} className="flex items-center gap-2 mr-10 group flex-shrink-0" aria-label="Rasa Productions">
+        <Link href={logoHref} className="flex items-center gap-3 mr-10 group flex-shrink-0" aria-label="Rasa Productions">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/media/logo.png"
             alt="Rasa Productions"
-            className="h-10 w-auto object-contain drop-shadow-[0_0_12px_rgba(255,160,0,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,160,0,0.65)] group-hover:scale-105 transition-all duration-300"
+            className="h-9 w-auto object-contain drop-shadow-[0_0_12px_rgba(255,160,0,0.4)] group-hover:drop-shadow-[0_0_20px_rgba(255,160,0,0.65)] group-hover:scale-105 transition-all duration-300 flex-shrink-0"
           />
+          <div className="hidden sm:flex flex-col leading-tight">
+            <span className="text-sm font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/60 group-hover:from-amber-200 group-hover:to-white transition-all duration-300">
+              Rasa Productions
+            </span>
+            <span className="text-[9px] font-bold text-white/25 uppercase tracking-[0.22em]">Studio Portal</span>
+          </div>
         </Link>
 
         {/* ── NAV LINKS — only shown when logged in ── */}
