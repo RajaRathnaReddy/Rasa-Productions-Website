@@ -22,9 +22,15 @@ export default async function ProtectedLayout({
   const isAdmin = user ? (process.env.ADMIN_UUID === user.id) : false;
   const userRole = isAdmin ? "super_admin" : "client";
 
+  const displayName: string =
+    user?.user_metadata?.full_name ||
+    user?.user_metadata?.name ||
+    user?.email?.split("@")[0] ||
+    "User";
+
   return (
     <>
-      <Navigation userRole={userRole} isAdmin={isAdmin} />
+      <Navigation userRole={userRole} isAdmin={isAdmin} userEmail={user?.email} displayName={displayName} />
       <div className="flex-1 flex flex-col relative">{children}</div>
     </>
   );

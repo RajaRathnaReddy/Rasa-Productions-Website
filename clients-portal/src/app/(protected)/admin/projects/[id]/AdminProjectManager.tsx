@@ -44,6 +44,9 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
   const [isAddingEvent, setIsAddingEvent] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingEventText, setEditingEventText] = useState("");
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const showToast = (msg: string, ok = false) => {
@@ -189,15 +192,34 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
     router.refresh();
   };
 
+  /* ── EDIT EVENT ── */
+  const handleStartEdit = (ev: any) => {
+    setEditingEventId(ev.id);
+    setEditingEventText(ev.description || "");
+  };
+
+  const handleSaveEdit = async (eventId: string) => {
+    setSavingEditId(eventId);
+    const { error } = await supabase.from("events").update({ description: editingEventText }).eq("id", eventId);
+    if (!error) {
+      setEvents(events.map(ev => ev.id === eventId ? { ...ev, description: editingEventText } : ev));
+      setEditingEventId(null);
+      showToast("Event updated.", true);
+    } else {
+      showToast("Failed to update: " + error.message);
+    }
+    setSavingEditId(null);
+  };
+
   /* ── DELETE EVENT ── */
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Delete this timeline event? This cannot be undone.")) return;
     setDeletingEventId(eventId);
     const { error } = await supabase.from("events").delete().eq("id", eventId);
     if (!error) {
       setEvents(events.filter(ev => ev.id !== eventId));
+      showToast("Event deleted.", true);
     } else {
-      showToast("Failed to delete event: " + error.message);
+      showToast("Failed to delete: " + error.message);
     }
     setDeletingEventId(null);
   };
@@ -430,20 +452,61 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
           ) : (
             <div className="space-y-3">
               {events.map((ev: any) => (
-                <div key={ev.id} className="group flex gap-4 p-4 rounded-2xl bg-white/[0.03] border border-border/30 hover:border-indigo-500/20 transition-all">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-lg shrink-0">
+                <div key={ev.id} className={`group flex gap-4 p-4 rounded-2xl border transition-all ${
+                  ev.type === "Client Feedback"
+                    ? "bg-rose-500/5 border-rose-500/15 hover:border-rose-500/30"
+                    : "bg-white/[0.03] border-border/30 hover:border-indigo-500/20"
+                }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
+                    ev.type === "Client Feedback"
+                      ? "bg-rose-500/10 border border-rose-500/20"
+                      : "bg-indigo-500/10 border border-indigo-500/20"
+                  }`}>
                     {EVENT_TYPE_ICONS[ev.type] || "📌"}
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
-                    <div className="font-semibold text-white text-sm">{ev.title}</div>
+                    <div className="font-semibold text-white text-sm flex items-center gap-2">
+                      {ev.title}
+                      {ev.type === "Client Feedback" && (
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-rose-500/20 text-rose-300 border border-rose-500/25 px-1.5 py-0.5 rounded-full">Client</span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-muted-foreground flex items-center gap-2">
                       <span>{ev.type}</span>
                       <span>·</span>
                       <span>{new Date(ev.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                     </div>
-                    {ev.description && (
-                      <p className="text-sm text-white/60 mt-2">{ev.description}</p>
+
+                    {/* Description: view or inline edit */}
+                    {editingEventId === ev.id ? (
+                      <div className="mt-2 space-y-2">
+                        <textarea
+                          value={editingEventText}
+                          onChange={e => setEditingEventText(e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-lg bg-black/30 border border-indigo-500/40 text-white text-sm focus:outline-none resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveEdit(ev.id)}
+                            disabled={savingEditId === ev.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold hover:bg-emerald-600/30 transition-all"
+                          >
+                            {savingEditId === ev.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingEventId(null)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 text-xs font-semibold hover:bg-white/10 transition-all"
+                          >
+                            <X className="w-3 h-3" /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      ev.description && <p className="text-sm text-white/60 mt-2">{ev.description}</p>
                     )}
+
                     {ev.audio_url && (
                       <div className="mt-2 flex items-center gap-2 bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1.5 rounded-lg w-fit">
                         <FileAudio className="w-3.5 h-3.5 text-fuchsia-400" />
@@ -451,14 +514,26 @@ export function AdminProjectManager({ project, initialEvents }: { project: any; 
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleDeleteEvent(ev.id)}
-                    disabled={deletingEventId === ev.id}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/30 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 shrink-0 self-start mt-0.5 border border-transparent hover:border-red-500/20"
-                    title="Delete event"
-                  >
-                    {deletingEventId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                  </button>
+
+                  {/* Admin action buttons */}
+                  <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                    <button
+                      onClick={() => handleStartEdit(ev)}
+                      disabled={editingEventId === ev.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all border border-transparent hover:border-indigo-500/20"
+                      title="Edit event"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      disabled={deletingEventId === ev.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/30 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                      title="Delete event"
+                    >
+                      {deletingEventId === ev.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

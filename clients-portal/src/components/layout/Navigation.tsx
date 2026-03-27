@@ -5,7 +5,37 @@ import { Music, LogOut } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 
-export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "client", isAdmin?: boolean }) {
+// Generates initials from a name/email string
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+|@/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+// Generates a deterministic gradient based on the string (consistent per user)
+function getAvatarGradient(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  const gradients = [
+    "from-indigo-500 to-purple-600",
+    "from-fuchsia-500 to-pink-600",
+    "from-cyan-500 to-blue-600",
+    "from-emerald-500 to-teal-600",
+    "from-amber-500 to-orange-600",
+    "from-rose-500 to-red-600",
+    "from-violet-500 to-indigo-600",
+  ];
+  return gradients[Math.abs(hash) % gradients.length];
+}
+
+type NavigationProps = {
+  userRole?: "super_admin" | "client";
+  isAdmin?: boolean;
+  userEmail?: string;
+  displayName?: string;
+};
+
+export function Navigation({ userRole, isAdmin, userEmail, displayName = "User" }: NavigationProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -15,12 +45,14 @@ export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "
   };
 
   const logoHref = (userRole === "super_admin" || isAdmin) ? "/admin/projects" : userRole === "client" ? "/dashboard" : "/";
+  const initials = getInitials(displayName || userEmail || "U");
+  const gradient = getAvatarGradient(userEmail || displayName || "user");
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/8 bg-[#080812]/92 backdrop-blur-2xl shadow-[0_1px_0_rgba(99,102,241,0.12)]">
       <div className="container flex h-16 items-center px-6 md:px-10 max-w-7xl mx-auto">
 
-        {/* ── RP LOGO IMAGE ── */}
+        {/* ── RP LOGO + BRAND NAME ── */}
         <Link href={logoHref} className="flex items-center gap-3 mr-10 group flex-shrink-0" aria-label="Rasa Productions">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -40,7 +72,7 @@ export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "
         {(userRole || isAdmin) && (
           <div className="flex flex-1 items-center justify-end gap-1.5">
             <nav className="flex items-center gap-1">
-              {/* Link to Admin Panel - Visible only to admins */}
+              {/* Admin Panel link */}
               {(userRole === "super_admin" || isAdmin) && (
                 <Link
                   href="/admin"
@@ -63,7 +95,24 @@ export function Navigation({ userRole, isAdmin }: { userRole?: "super_admin" | "
                 </>
               )}
             </nav>
-            <div className="flex items-center ml-3 pl-3 border-l border-white/8">
+
+            {/* ── USER AVATAR + LOGOUT ── */}
+            <div className="flex items-center ml-3 pl-3 border-l border-white/8 gap-3">
+              {/* Profile Avatar */}
+              <div className="relative group/avatar cursor-default">
+                <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg ring-2 ring-white/10 group-hover/avatar:ring-white/25 transition-all`}>
+                  <span className="text-white font-black text-xs select-none">{initials}</span>
+                </div>
+                {/* Tooltip */}
+                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover/avatar:opacity-100 transition-all pointer-events-none z-50">
+                  <div className="bg-[#13131f] border border-white/10 rounded-xl px-3 py-2 shadow-2xl whitespace-nowrap">
+                    <p className="text-white text-xs font-semibold">{displayName}</p>
+                    {userEmail && <p className="text-white/35 text-[10px] mt-0.5">{userEmail}</p>}
+                    <p className="text-[9px] font-black uppercase tracking-widest mt-1 text-indigo-400">{isAdmin ? "Admin" : "Client"}</p>
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 text-sm font-semibold text-white/35 hover:text-rose-400 px-3 py-2 rounded-full hover:bg-rose-500/10 transition-all"

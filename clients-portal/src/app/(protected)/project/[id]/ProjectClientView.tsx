@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SecureAudioPlayer } from "@/components/project/SecureAudioPlayer";
 import { FileAudio, History, LayoutGrid, MessageSquare, Music2, Users, CheckCircle2, CircleDot, Send, Loader2 } from "lucide-react";
@@ -20,7 +20,7 @@ const iconStyles: Record<string, string> = {
 
 export function ProjectClientView({ project, events: initialEvents, activeAudioUrl: initialAudioUrl }: { project: any, events: any[], activeAudioUrl: string }) {
   const supabase = createClient();
-  const [events] = useState(initialEvents);
+  const [events, setEvents] = useState(initialEvents);
   const [currentAudioUrl, setCurrentAudioUrl] = useState(initialAudioUrl);
   const [activeAudioId, setActiveAudioId] = useState(() => initialEvents.find(e => e.audio_url)?.id || null);
   const [feedback, setFeedback] = useState("");
@@ -41,19 +41,35 @@ export function ProjectClientView({ project, events: initialEvents, activeAudioU
   const handleSendFeedback = async (eventId: string) => {
     if (!feedback.trim()) return;
     setFeedbackLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("events").insert({
+    const newEvent = {
+      id: `temp-${Date.now()}`,
       project_id: project.id,
       type: "Client Feedback",
       title: `Feedback from ${project.client_name}`,
       description: feedback,
-    });
+      audio_url: null,
+      created_at: new Date().toISOString(),
+    };
+    // Optimistically add to timeline immediately
+    setEvents(prev => [newEvent, ...prev]);
+    setFeedback("");
+    showToast("✅ Feedback sent to the studio!");
+
+    const { data, error } = await supabase.from("events").insert({
+      project_id: project.id,
+      type: "Client Feedback",
+      title: `Feedback from ${project.client_name}`,
+      description: newEvent.description,
+    }).select().single();
+
     if (error) {
+      // Roll back on error
+      setEvents(prev => prev.filter(e => e.id !== newEvent.id));
       showToast("❌ Failed to send feedback.");
-    } else {
-      setFeedback("");
+    } else if (data) {
+      // Replace temp with real DB record
+      setEvents(prev => prev.map(e => e.id === newEvent.id ? data : e));
       setFeedbackSent(true);
-      showToast("✅ Feedback sent to the studio!");
       setTimeout(() => setFeedbackSent(false), 4000);
     }
     setFeedbackLoading(false);
