@@ -42,12 +42,16 @@ export function UpdatePasswordForm() {
       setLoading(false);
     } else {
       setSuccess(true);
-      setTimeout(() => {
-        // Sign out so the client logs in fresh with their new password
-        supabase.auth.signOut().finally(() => {
-          router.push("/login");
-          router.refresh();
-        });
+      // Sign out so the client logs in fresh with their new password,
+      // then hard-redirect to /login. Use window.location to avoid
+      // client-side router issues when session cookies aren't synced.
+      setTimeout(async () => {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Ignore signOut errors — we're redirecting anyway
+        }
+        window.location.href = "/login";
       }, 2200);
     }
   };

@@ -20,17 +20,33 @@ export async function POST(request: Request) {
 
   // Use admin client with service role key
   const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    return NextResponse.json(
+      { error: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is not set." },
+      { status: 500 }
+    );
+  }
+
   const adminClient = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    serviceRoleKey
   );
 
-  // Try to invite the user first
+  // Try to invite the user first.
+  // redirectTo → /auth/callback so the SERVER handler exchanges the code.
+  const redirectTo = `${origin}/auth/callback?next=/update-password`;
+
   const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${origin}/auth/confirm`,
+    redirectTo,
   });
 
-  // If already registered — send a password reset link instead
+  // If already registered — send a password reset link instead.
+  // IMPORTANT: We use the admin (service-role) client for resetPasswordForEmail.
+  // Using the SSR server client would generate a PKCE code_verifier stored in the
+  // server's cookie context, unreachable by the invited user's browser — causing
+  // "Link Expired" every time. The admin client avoids PKCE entirely.
   if (error) {
     const isAlreadyRegistered =
       error.message.toLowerCase().includes("already been registered") ||
@@ -38,13 +54,16 @@ export async function POST(request: Request) {
       error.message.toLowerCase().includes("user already exists");
 
     if (isAlreadyRegistered) {
-      // Send password reset so they can set/recover their password
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/auth/confirm`,
-      });
+      const { error: resetError } = await adminClient.auth.resetPasswordForEmail(
+        email,
+        { redirectTo }
+      );
 
       if (resetError) {
-        return NextResponse.json({ error: resetError.message }, { status: 500 });
+        return NextResponse.json(
+          { error: `Password reset failed: ${resetError.message}` },
+          { status: 500 }
+        );
       }
 
       return NextResponse.json({

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Outfit, Noto_Sans_Telugu, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthGuard } from "@/components/auth/AuthGuard";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -82,6 +83,7 @@ export default function RootLayout({
       className={`${outfit.variable} ${notoTelugu.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary">
+        <AuthGuard />
         <main className="flex-1 flex flex-col relative">{children}</main>
       </body>
     </html>

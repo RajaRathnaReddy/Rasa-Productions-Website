@@ -6,10 +6,17 @@ export async function GET(request: Request) {
 
   // ── PKCE / magic-link flow: ?code=
   const code = searchParams.get("code");
-  // ── token_hash flow (some Supabase configs): ?token_hash=&type=
+  // ── token_hash flow: ?token_hash=&type=
   const tokenHash = searchParams.get("token_hash");
   const type      = searchParams.get("type") as "invite" | "recovery" | "email" | null;
-  const next      = searchParams.get("next") ?? "/dashboard";
+  const errorParam = searchParams.get("error");
+  const errorDesc  = searchParams.get("error_description");
+
+  // If Supabase redirected here with an error in query params
+  if (errorParam) {
+    const msg = encodeURIComponent(errorDesc || errorParam);
+    return NextResponse.redirect(`${origin}/auth/confirm?auth_error=${msg}`);
+  }
 
   const supabase = await createClient();
 
@@ -17,28 +24,24 @@ export async function GET(request: Request) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const destination = next === "/update-password" ? "/update-password" : next;
-      return NextResponse.redirect(`${origin}${destination}`);
+      // Always go to /update-password — this callback is only used by invite/reset flows
+      return NextResponse.redirect(`${origin}/update-password`);
     }
+    console.error("[auth/callback] PKCE code exchange failed:", error.message);
   }
 
-  // 2. Handle token_hash (explicit param — some flows send this)
+  // 2. Handle token_hash (explicit param)
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     if (!error) {
-      const destination = (type === "invite" || type === "recovery")
-        ? "/update-password"
-        : next;
-      return NextResponse.redirect(`${origin}${destination}`);
+      return NextResponse.redirect(`${origin}/update-password`);
     }
+    console.error("[auth/callback] OTP verification failed:", error.message);
   }
 
-  // 3. No recognisable query params — the token is almost certainly in the URL
-  //    HASH FRAGMENT (#access_token=...&type=invite) which the server CANNOT read.
-  //    Return a minimal HTML page with inline JS that:
-  //      a) reads the hash client-side
-  //      b) if a hash is present, forwards to /auth/confirm WITH the hash preserved
-  //      c) if no hash either, shows the "invalid link" error
+  // 3. Hash fragment flow — the server can't read the hash.
+  //    Return a small HTML page that reads the hash client-side and
+  //    forwards to /auth/confirm (which will parse the tokens manually).
   return new NextResponse(
     `<!DOCTYPE html>
 <html lang="en">
@@ -60,15 +63,21 @@ export async function GET(request: Request) {
   </div>
   <script>
     (function() {
-      var hash   = window.location.hash;    // e.g. #access_token=xxx&type=invite
-      var search = window.location.search;  // e.g. ?next=/update-password
+      var hash = window.location.hash;
 
+      // Check for error in hash
+      if (hash && hash.includes('error=')) {
+        var params = new URLSearchParams(hash.substring(1));
+        var errMsg = params.get('error_description') || params.get('error') || 'Link expired or invalid';
+        window.location.replace('/auth/confirm?auth_error=' + encodeURIComponent(errMsg));
+        return;
+      }
+
+      // Forward hash tokens to the confirm page
       if (hash && hash.length > 1) {
-        // Forward to the client-side confirm page WITH the hash intact
-        window.location.replace('/auth/confirm' + search + hash);
+        window.location.replace('/auth/confirm' + hash);
       } else {
-        // Genuinely no token anywhere — show error
-        window.location.replace('/login?error=Invalid+or+expired+link');
+        window.location.replace('/auth/confirm?auth_error=' + encodeURIComponent('No authentication token found. The link may be invalid or already used.'));
       }
     })();
   </script>
