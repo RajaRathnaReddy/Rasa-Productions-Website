@@ -1,28 +1,73 @@
 {
-  "name": "Rasa Productions - Auto Song Release Flow",
+  "name": "Rasa Productions - Auto Song Release",
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "new-song-release",
-        "responseMode": "lastNode",
-        "options": {}
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
       },
-      "id": "1",
-      "name": "Webhook Trigger",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [240, 300]
+      "id": "node-schedule-trigger",
+      "name": "Schedule: Every 30 Mins",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 240]
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate incoming release metadata\nconst body = $json.body || $json;\n\nconst formattedSong = {\n  title: body.title || 'Untitled Release',\n  artist: body.artist || 'Rasa Productions',\n  duration: body.duration || '0:00',\n  releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],\n  cover: body.cover || '/covers/default.webp',\n  audio: body.audio || '',\n  platforms: {\n    youtube: body.platforms?.youtube || body.youtube || '',\n    spotify: body.platforms?.spotify || body.spotify || '',\n    apple: body.platforms?.apple || body.apple || '',\n    amazon: body.platforms?.amazon || body.amazon || ''\n  }\n};\n\nreturn { json: formattedSong };"
+        "httpMethod": "POST",
+        "path": "rasa-new-song",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "2",
-      "name": "Format & Validate Song",
+      "id": "node-webhook-trigger",
+      "name": "Webhook: Instant Hit",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 440],
+      "webhookId": "rasa-new-song-webhook"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1hkapR2dKuM-OzHtl3j7c4Fmu-WCFShTDkGMcw7At3yo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 618995874,
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "node-google-sheets",
+      "name": "Read Master Songs Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [440, 240],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "kmpI1Imrkqsc6DKC",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format song release data from Google Sheets or Webhook\nconst items = $input.all();\nconst formattedSongs = [];\n\nfor (const item of items) {\n  const row = item.json.body || item.json;\n  const title = row.song_name || row.title;\n  if (!title || title.trim() === '' || title.includes('MASTER SONGS') || title.includes('SONG INFO')) {\n    continue;\n  }\n\n  const artist = row.artist || 'Rasa Productions';\n  const duration = row.duration || '4:30';\n  const releaseDate = row.release_date || row.releaseDate || new Date().toISOString().split('T')[0];\n  const cover = row.poster_drive_url || row.cover || '/covers/default.webp';\n  const audio = row.audio_drive_url || row.audio || '';\n\n  const platforms = {\n    spotify: row.spotify_url || row.platforms?.spotify || '',\n    youtube: row.youtube_music_url || row.youtube_url || row.platforms?.youtube || '',\n    apple: row.apple_music_url || row.platforms?.apple || '',\n    amazon: row.amazon_url || row.platforms?.amazon || '',\n    deezer: row.deezer_url || row.platforms?.deezer || '',\n    jiosaavn: row.jiosaavn_url || row.platforms?.jiosaavn || '',\n    soundcloud: row.soundcloud_url || row.platforms?.soundcloud || '',\n    shazam: row.shazam_url || row.platforms?.shazam || ''\n  };\n\n  const lyricTelugu = row.lyric_snippet_telugu || '';\n  const lyricEnglish = row.lyric_snippet_english || '';\n  let lyricSnippet = '';\n  if (lyricTelugu && lyricEnglish) {\n    lyricSnippet = `${lyricTelugu} • ${lyricEnglish}`;\n  } else {\n    lyricSnippet = lyricTelugu || lyricEnglish || '';\n  }\n\n  formattedSongs.push({\n    id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),\n    title,\n    artist,\n    duration,\n    genre: row.genre || 'Christian Devotional',\n    language: row.language || 'Telugu',\n    releaseDate,\n    cover,\n    audio,\n    lyricSnippet,\n    platforms\n  });\n}\n\nreturn formattedSongs.map(s => ({ json: s }));"
+      },
+      "id": "node-format-song",
+      "name": "Format & Validate Songs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [680, 340]
     },
     {
       "parameters": {
@@ -46,30 +91,73 @@
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {}
       },
-      "id": "3",
-      "name": "Push to Rasa Productions Vercel",
+      "id": "node-push-to-website",
+      "name": "Publish to Rasa Website",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300]
+      "position": [920, 340]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "node-respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1140, 340]
     }
   ],
   "connections": {
-    "Webhook Trigger": {
+    "Schedule: Every 30 Mins": {
       "main": [
         [
           {
-            "node": "Format & Validate Song",
+            "node": "Read Master Songs Sheet",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Format & Validate Song": {
+    "Read Master Songs Sheet": {
       "main": [
         [
           {
-            "node": "Push to Rasa Productions Vercel",
+            "node": "Format & Validate Songs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Instant Hit": {
+      "main": [
+        [
+          {
+            "node": "Format & Validate Songs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format & Validate Songs": {
+      "main": [
+        [
+          {
+            "node": "Publish to Rasa Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish to Rasa Website": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
