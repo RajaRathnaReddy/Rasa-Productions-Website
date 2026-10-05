@@ -1,12 +1,40 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import SongCard from '@/components/SongCard';
 import SongModal from '@/components/SongModal';
 import { FaMusic, FaHeadphones } from 'react-icons/fa';
-import songsData from '@/data/songs.json';
+import fallbackSongsData from '@/data/songs.json';
+
+const sortSongsDescending = (list: any[]) => {
+    return [...(list || [])].sort((a, b) => {
+        const dateA = new Date(a.releaseDate || '1970-01-01').getTime();
+        const dateB = new Date(b.releaseDate || '1970-01-01').getTime();
+        return dateB - dateA;
+    });
+};
 
 export default function MusicClient() {
+    const [songsData, setSongsData] = useState<any[]>(() => sortSongsDescending(fallbackSongsData));
+
+    useEffect(() => {
+        const fetchSongs = async () => {
+            const API_URL = process.env.NEXT_PUBLIC_RELEASES_API_URL || '/api/releases';
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error('API Error');
+                const data = await res.json();
+                if (data && Array.isArray(data) && data.length > 0) {
+                    setSongsData(sortSongsDescending(data));
+                }
+            } catch (err) {
+                console.warn('Failed to fetch dynamic songs, using auto-arranged fallback', err);
+            }
+        };
+        fetchSongs();
+    }, []);
+
     return (
         <main className="min-h-screen pt-32 lg:pt-40 pb-24">
             {/* Background gradients */}

@@ -8,7 +8,7 @@ import { useAudioStore } from '@/store/audioStore';
 import SongCard from '@/components/SongCard';
 import SongModal from '@/components/SongModal';
 import { FaVolumeUp, FaVolumeMute, FaMusic, FaFilm, FaVrCardboard } from 'react-icons/fa';
-import songsData from '@/data/songs.json';
+import fallbackSongsData from '@/data/songs.json';
 
 // --- Helper component to split text into animating characters ---
 const CharacterReveal = ({ text, delayOffset = 0, className = "" }: { text: string, delayOffset?: number, className?: string }) => {
@@ -71,7 +71,34 @@ const ParticleField = () => {
     );
 };
 
+const sortSongsDescending = (list: any[]) => {
+    return [...(list || [])].sort((a, b) => {
+        const dateA = new Date(a.releaseDate || '1970-01-01').getTime();
+        const dateB = new Date(b.releaseDate || '1970-01-01').getTime();
+        return dateB - dateA;
+    });
+};
+
 export default function HomeClient() {
+    const [songsData, setSongsData] = useState<any[]>(() => sortSongsDescending(fallbackSongsData));
+
+    useEffect(() => {
+        const fetchSongs = async () => {
+            const API_URL = process.env.NEXT_PUBLIC_RELEASES_API_URL || '/api/releases';
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error('API Error');
+                const data = await res.json();
+                if (data && Array.isArray(data) && data.length > 0) {
+                    setSongsData(sortSongsDescending(data));
+                }
+            } catch (err) {
+                console.warn('Failed to fetch dynamic songs, using auto-arranged fallback', err);
+            }
+        };
+        fetchSongs();
+    }, []);
+
     const { isMuted, toggleMute } = useAudioStore();
     const heroRef = useRef<HTMLDivElement>(null);
     const { scrollYProgress } = useScroll({
