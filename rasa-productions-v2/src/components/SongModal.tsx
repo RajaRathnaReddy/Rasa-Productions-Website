@@ -13,6 +13,9 @@ import {
     FaInstagram,
     FaDownload,
     FaPlay,
+    FaSoundcloud,
+    FaMusic,
+    FaQuoteLeft,
 } from 'react-icons/fa';
 
 const platforms = [
@@ -43,6 +46,27 @@ const platforms = [
         icon: FaAmazon,
         color: '#FF9900',
         bg: 'rgba(255,153,0,0.15)',
+    },
+    {
+        key: 'deezer',
+        label: 'Deezer',
+        icon: FaMusic,
+        color: '#A238FF',
+        bg: 'rgba(162,56,255,0.15)',
+    },
+    {
+        key: 'jiosaavn',
+        label: 'JioSaavn',
+        icon: FaMusic,
+        color: '#2BC5B4',
+        bg: 'rgba(43,197,180,0.15)',
+    },
+    {
+        key: 'soundcloud',
+        label: 'SoundCloud',
+        icon: FaSoundcloud,
+        color: '#FF5500',
+        bg: 'rgba(255,85,0,0.15)',
     },
     {
         key: 'instagram',
@@ -141,7 +165,20 @@ export default function SongModal() {
                             <h2 className="text-2xl font-bold text-white mb-0.5">
                                 {selectedSong.title}
                             </h2>
-                            <p className="text-gray-400 mb-5">{selectedSong.artist}</p>
+                            <p className="text-gray-400 mb-2">{selectedSong.artist}</p>
+
+                            {(selectedSong as any).genre && (
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3" style={{ background: 'rgba(212,160,23,0.12)', border: '1px solid rgba(212,160,23,0.3)', color: '#d4a017' }}>
+                                    {(selectedSong as any).language || 'Telugu'} • {(selectedSong as any).genre}
+                                </div>
+                            )}
+
+                            {(selectedSong as any).lyricSnippet && (
+                                <div className="rounded-xl p-3.5 mb-4 text-xs italic text-gray-300 leading-relaxed border border-cyan-400/20 bg-cyan-950/20 flex gap-2.5 items-start">
+                                    <FaQuoteLeft className="text-cyan-400 shrink-0 mt-0.5" size={12} />
+                                    <div>{(selectedSong as any).lyricSnippet}</div>
+                                </div>
+                            )}
 
                             <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">
                                 Listen On

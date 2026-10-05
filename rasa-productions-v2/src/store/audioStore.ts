@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface Song {
+export interface Song {
   id: string;
   title: string;
   artist: string;
@@ -9,12 +9,22 @@ interface Song {
   audio: string;
   isNew: boolean;
   releaseDate: string;
+  genre?: string;
+  language?: string;
+  lyricSnippet?: string;
+  posterDriveUrl?: string;
+  lyricsGoogleDocUrl?: string;
   platforms: {
     youtube?: string;
     amazon?: string;
     spotify?: string;
     apple?: string;
     instagram?: string;
+    deezer?: string;
+    jiosaavn?: string;
+    soundcloud?: string;
+    shazam?: string;
+    [key: string]: string | undefined;
   };
 }
 

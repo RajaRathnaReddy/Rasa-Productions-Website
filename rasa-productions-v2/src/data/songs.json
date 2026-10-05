@@ -1,34 +1,63 @@
 [
   {
+    "id": "priyuni-thalampulu",
+    "title": "Priyuni Thalampulu",
+    "artist": "Manasa Raja Reddy x Rasa Productions",
+    "duration": "4:48",
+    "cover": "/covers/priyuni-thalampulu.webp",
+    "audio": "",
+    "isNew": true,
+    "releaseDate": "2026-03-26",
+    "genre": "Christian Devotional",
+    "language": "Telugu",
+    "lyricSnippet": "ప్రియుని తలంపులు నాకు ఎంత మేలు • How precious are the thoughts of my Beloved",
+    "platforms": {
+      "deezer": "https://www.deezer.com/track/3916547991",
+      "spotify": "https://open.spotify.com/search/Priyuni%20Thalampulu%20Rasa%20Productions",
+      "youtube": "https://music.youtube.com/search?q=Priyuni+Thalampulu+Rasa+Productions",
+      "apple": "https://music.apple.com/us/search?term=Priyuni+Thalampulu+Rasa+Productions",
+      "amazon": "https://music.amazon.com/search/Priyuni+Thalampulu+Rasa+Productions"
+    }
+  },
+  {
+    "id": "sri-yesu-suprabhatam",
+    "title": "Sri Yesu Suprabhatam",
+    "artist": "Manasa Raja Reddy x Rasa Productions",
+    "duration": "5:10",
+    "cover": "/covers/sri-yasu-shuprabatham.webp",
+    "audio": "/music/sri-yasu-shuprabatham/song.mp3",
+    "isNew": false,
+    "releaseDate": "2026-02-18",
+    "genre": "Christian Devotional",
+    "language": "Telugu",
+    "lyricSnippet": "శ్రీ యేసు సుప్రభాతం వినరా • Hear the morning glory of Lord Jesus",
+    "platforms": {
+      "spotify": "https://open.spotify.com/track/2NR9pjY1i93oJ8LXYPdLX2",
+      "youtube": "https://music.youtube.com/watch?v=BBFAg_BTcQ4",
+      "apple": "https://music.apple.com/us/album/sri-yesu-suprabhatam/1877833921?i=1877833922",
+      "amazon": "https://music.amazon.com/tracks/B0GNR8G4CV",
+      "deezer": "https://www.deezer.com/track/3849067131",
+      "jiosaavn": "https://www.jiosaavn.com/song/sri-yesu-suprabhatam/IikdRiVYBXc",
+      "soundcloud": "https://soundcloud.com/manasarajareddy/sri-yesu-suprabhatam"
+    }
+  },
+  {
     "id": "nibandhana-varam",
     "title": "Nibandhana Varam",
-    "artist": "Rasa Productions",
+    "artist": "Manasa Raja Reddy x Rasa Productions",
     "duration": "4:32",
     "cover": "/covers/nibandhana-varam.webp",
     "audio": "/music/nibandhana-varam/song.mp3",
     "isNew": false,
-    "releaseDate": "2024-12-01",
+    "releaseDate": "2026-02-18",
+    "genre": "Christian Devotional",
+    "language": "Telugu",
+    "lyricSnippet": "నిబంధన వరం నీకిచ్చాను • I have given you the covenant blessing",
     "platforms": {
-      "youtube": "https://music.youtube.com/playlist?list=OLAK5uy_kl47Papl3iRr5SvCJm6C-BN2pnU-AiQ2w&si=LCqeLaUGKF4AEbq5",
-      "amazon": "https://music.amazon.in/tracks/B0GNGSTQ2H/?ref=dm_sh_rtT8L7uQGCQMTupiTSI0rgBka",
-      "spotify": "https://open.spotify.com/track/0w6nTTLQdoDzsje2wzZOnm?si=16d695a38fc14e0d",
-      "apple": "https://music.apple.com/us/album/nibandhana-varam-single/1879423428"
-    }
-  },
-  {
-    "id": "sri-yesu-shuprabatham",
-    "title": "Sri Yesu Shuprabatham",
-    "artist": "Rasa Productions",
-    "duration": "5:10",
-    "cover": "/covers/sri-yasu-shuprabatham.webp",
-    "audio": "/music/sri-yasu-shuprabatham/song.mp3",
-    "isNew": true,
-    "releaseDate": "2025-01-01",
-    "platforms": {
-      "youtube": "https://music.youtube.com/watch?v=BBFAg_BTcQ4&si=oN4KkqT44A2MDF_h",
-      "amazon": "https://music.amazon.in/tracks/B0GNR8G4CV",
-      "spotify": "https://open.spotify.com/track/2NR9pjY1i93oJ8LXYPdLX2",
-      "apple": "https://music.apple.com/us/album/sri-yesu-suprabhatam-single/1877833921"
+      "spotify": "https://open.spotify.com/track/0w6nTTLQdoDzsje2wzZOnm",
+      "youtube": "https://music.youtube.com/watch?v=TFph-IqUlC0",
+      "apple": "https://music.apple.com/us/album/nibandhana-varam/1879423428",
+      "amazon": "https://music.amazon.com/tracks/B0GNGSTQ2H"
     }
   }
 ]
