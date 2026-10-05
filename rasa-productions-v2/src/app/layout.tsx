@@ -22,9 +22,20 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://rasaproduction.in"),
   title: "Rasa Productions | Music. Emotion. Story.",
   description:
     "Rasa Productions is a professional music and virtual production brand crafting cinematic experiences through music, video, and Unreal Engine environments.",
+  icons: {
+    icon: [
+      { url: "/logos/logo-icon.webp", type: "image/webp" },
+      { url: "/logos/logo.webp", type: "image/webp" },
+    ],
+    shortcut: ["/logos/logo-icon.webp"],
+    apple: [
+      { url: "/logos/logo-icon.webp", sizes: "180x180", type: "image/webp" },
+    ],
+  },
   keywords: [
     "Rasa Productions",
     "Indian music",
@@ -38,6 +49,23 @@ export const metadata: Metadata = {
     description:
       "Discover our music, video songs and virtual production work.",
     type: "website",
+    url: "https://rasaproduction.in",
+    siteName: "Rasa Productions",
+    images: [
+      {
+        url: "/logos/logo.webp",
+        width: 1200,
+        height: 630,
+        alt: "Rasa Productions Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rasa Productions | Music. Emotion. Story.",
+    description:
+      "Discover our music, video songs and virtual production work.",
+    images: ["/logos/logo.webp"],
   },
 };
 
