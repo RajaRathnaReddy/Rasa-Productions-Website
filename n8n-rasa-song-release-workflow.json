@@ -1,0 +1,80 @@
+{
+  "name": "Rasa Productions - Auto Song Release Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-song-release",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate incoming release metadata\nconst body = $json.body || $json;\n\nconst formattedSong = {\n  title: body.title || 'Untitled Release',\n  artist: body.artist || 'Rasa Productions',\n  duration: body.duration || '0:00',\n  releaseDate: body.releaseDate || new Date().toISOString().split('T')[0],\n  cover: body.cover || '/covers/default.webp',\n  audio: body.audio || '',\n  platforms: {\n    youtube: body.platforms?.youtube || body.youtube || '',\n    spotify: body.platforms?.spotify || body.spotify || '',\n    apple: body.platforms?.apple || body.apple || '',\n    amazon: body.platforms?.amazon || body.amazon || ''\n  }\n};\n\nreturn { json: formattedSong };"
+      },
+      "id": "2",
+      "name": "Format & Validate Song",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rasaproduction.in/api/releases",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer rasa-secret-n8n"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Push to Rasa Productions Vercel",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format & Validate Song",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format & Validate Song": {
+      "main": [
+        [
+          {
+            "node": "Push to Rasa Productions Vercel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
